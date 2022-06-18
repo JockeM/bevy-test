@@ -1,7 +1,10 @@
+mod enemies;
 mod player;
 
 use bevy::{prelude::*, window::PresentMode};
+use bevy_inspector_egui::WorldInspectorPlugin;
 
+use enemies::EnemiesPlugin;
 use player::PlayerPlugin;
 
 const WIDTH: u32 = 800;
@@ -14,13 +17,15 @@ fn main() {
             width: WIDTH as f32,
             height: HEIGHT as f32,
             present_mode: PresentMode::Fifo,
-            ..Default::default()
+            ..default()
         })
         .insert_resource(ClearColor(Color::rgb(1.0, 1.0, 1.0)))
         .add_plugins(DefaultPlugins)
+        .add_plugin(WorldInspectorPlugin::new())
         .add_startup_system(spawn_camera)
         .add_startup_system(hide_mouse)
         .add_plugin(PlayerPlugin)
+        .add_plugin(EnemiesPlugin)
         .run();
 }
 
@@ -31,5 +36,5 @@ fn spawn_camera(mut commands: Commands) {
 fn hide_mouse(mut windows: ResMut<Windows>) {
     let window = windows.get_primary_mut().unwrap();
 
-    window.set_cursor_visibility(false);
+    //window.set_cursor_visibility(false);
 }

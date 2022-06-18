@@ -1,6 +1,5 @@
-use bevy::{prelude::*, window::CursorMoved};
-
 use crate::{HEIGHT, WIDTH};
+use bevy::{prelude::*, window::CursorMoved};
 
 #[derive(Component)]
 pub struct Player {
@@ -28,6 +27,7 @@ impl Plugin for PlayerPlugin {
         app.add_system(crosshair_move);
         app.add_system(player_fire);
         app.add_system(bullet_move);
+        app.add_system(despawn_bullet);
     }
 }
 
@@ -70,17 +70,17 @@ fn spawn_crosshair(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands
         .spawn_bundle(SpriteBundle {
             texture: asset_server.load("crosshair.png"),
-            transform: Transform::default(),
+            transform: Transform::from_xyz(0., 0., 1.),
             ..default()
         })
         .insert(Crosshair);
 }
 
 fn crosshair_move(
-    mut crosshair_query: Query<(&Crosshair, &mut Transform)>,
+    mut crosshair_query: Query<&mut Transform, With<Crosshair>>,
     mut cursor_event_reader: EventReader<CursorMoved>,
 ) {
-    let (_, mut transform) = crosshair_query.single_mut();
+    let mut transform = crosshair_query.single_mut();
 
     if let Some(event) = cursor_event_reader.iter().last() {
         transform.translation.x = event.position.x - (WIDTH as f32 / 2.);
@@ -90,7 +90,7 @@ fn crosshair_move(
 
 fn player_fire(
     mut player_query: Query<(&mut Player, &Transform)>,
-    crosshair_query: Query<(&Crosshair, &Transform)>,
+    crosshair_query: Query<&Transform, With<Crosshair>>,
     mut commands: Commands,
     time: Res<Time>,
     keyboard: Res<Input<MouseButton>>,
@@ -103,7 +103,7 @@ fn player_fire(
     let (mut player, player_transform) = player_query.single_mut();
     let time_since_startup = time.time_since_startup().as_millis();
     if (player.last_shot + player.firerate as u128) < time_since_startup {
-        let (_, crosshair_transform) = crosshair_query.single();
+        let crosshair_transform = crosshair_query.single();
         let p_trans = Vec2::new(
             player_transform.translation.x,
             player_transform.translation.y,
@@ -114,6 +114,7 @@ fn player_fire(
         );
         let dir = (c_trans - p_trans).normalize();
 
+        // TODO: Create a bullet pool
         commands
             .spawn_bundle(SpriteBundle {
                 texture: asset_server.load("bullet.png"),
@@ -129,9 +130,27 @@ fn player_fire(
 
 const BULLET_SPEED: f32 = 256.0;
 
-fn bullet_move(mut moving: Query<(&mut Transform, &Direction)>, time: Res<Time>) {
-    for (mut transform, dir) in moving.iter_mut() {
+fn bullet_move(
+    mut bullet_query: Query<(&mut Transform, &Direction), With<Bullet>>,
+    time: Res<Time>,
+) {
+    for (mut transform, dir) in bullet_query.iter_mut() {
         transform.translation.x += dir.0.x * time.delta_seconds() * BULLET_SPEED;
         transform.translation.y += dir.0.y * time.delta_seconds() * BULLET_SPEED;
+    }
+}
+
+fn despawn_bullet(
+    mut commands: Commands,
+    mut bullet_query: Query<(Entity, &mut Transform), With<Bullet>>,
+) {
+    for (entity, mut transform) in bullet_query.iter_mut() {
+        if transform.translation.x > WIDTH as f32
+            || transform.translation.x < -(WIDTH as f32)
+            || transform.translation.y > HEIGHT as f32
+            || transform.translation.y < -(HEIGHT as f32)
+        {
+            commands.entity(entity).despawn();
+        }
     }
 }
