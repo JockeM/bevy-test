@@ -1,10 +1,12 @@
 mod enemies;
+mod fps;
 mod player;
 
 use bevy::{prelude::*, window::PresentMode};
 use bevy_inspector_egui::WorldInspectorPlugin;
 
 use enemies::EnemiesPlugin;
+use fps::FpsDisplayPlugin;
 use player::PlayerPlugin;
 
 const WIDTH: u32 = 800;
@@ -26,6 +28,7 @@ fn main() {
         .add_startup_system(hide_mouse)
         .add_plugin(PlayerPlugin)
         .add_plugin(EnemiesPlugin)
+        .add_plugin(FpsDisplayPlugin)
         .run();
 }
 

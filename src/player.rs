@@ -35,7 +35,7 @@ fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands
         .spawn_bundle(SpriteBundle {
             texture: asset_server.load("player.png"),
-            transform: Transform::default(),
+            transform: Transform::from_xyz(0., 0., 0.5),
             ..default()
         })
         .insert(Player {
@@ -140,11 +140,8 @@ fn bullet_move(
     }
 }
 
-fn despawn_bullet(
-    mut commands: Commands,
-    mut bullet_query: Query<(Entity, &mut Transform), With<Bullet>>,
-) {
-    for (entity, mut transform) in bullet_query.iter_mut() {
+fn despawn_bullet(mut commands: Commands, bullet_query: Query<(Entity, &Transform), With<Bullet>>) {
+    for (entity, transform) in bullet_query.iter() {
         if transform.translation.x > WIDTH as f32
             || transform.translation.x < -(WIDTH as f32)
             || transform.translation.y > HEIGHT as f32
