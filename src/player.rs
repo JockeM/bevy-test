@@ -1,11 +1,16 @@
+use std::time::Duration;
+
 use crate::{HEIGHT, WIDTH};
 use bevy::{prelude::*, window::CursorMoved};
 
 #[derive(Component)]
 pub struct Player {
     pub speed: f32,
-    pub last_shot: u128,
-    pub firerate: u16,
+}
+
+#[derive(Component)]
+struct Weapon {
+    fire_timer: Timer,
 }
 
 #[derive(Component)]
@@ -17,6 +22,9 @@ pub struct Bullet;
 #[derive(Component)]
 struct Direction(Vec2);
 
+#[derive(Component)]
+struct Velocity(f32);
+
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
@@ -26,7 +34,7 @@ impl Plugin for PlayerPlugin {
         app.add_system(player_move);
         app.add_system(crosshair_move);
         app.add_system(player_fire);
-        app.add_system(bullet_move);
+        app.add_system(move_entities);
         app.add_system(despawn_bullet);
     }
 }
@@ -38,10 +46,9 @@ fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
             transform: Transform::from_xyz(0., 0., 0.5),
             ..default()
         })
-        .insert(Player {
-            speed: 128.0,
-            last_shot: 0,
-            firerate: 100,
+        .insert(Player { speed: 128.0 })
+        .insert(Weapon {
+            fire_timer: Timer::new(Duration::from_millis(100), true),
         });
 }
 
@@ -89,7 +96,7 @@ fn crosshair_move(
 }
 
 fn player_fire(
-    mut player_query: Query<(&mut Player, &Transform)>,
+    mut player_query: Query<(&mut Weapon, &Transform), With<Player>>,
     crosshair_query: Query<&Transform, With<Crosshair>>,
     mut commands: Commands,
     time: Res<Time>,
@@ -100,9 +107,11 @@ fn player_fire(
         return;
     }
 
-    let (mut player, player_transform) = player_query.single_mut();
-    let time_since_startup = time.time_since_startup().as_millis();
-    if (player.last_shot + player.firerate as u128) < time_since_startup {
+    let (mut weapon, player_transform) = player_query.single_mut();
+
+    weapon.fire_timer.tick(time.delta());
+
+    if weapon.fire_timer.finished() {
         let crosshair_transform = crosshair_query.single();
         let p_trans = Vec2::new(
             player_transform.translation.x,
@@ -112,6 +121,7 @@ fn player_fire(
             crosshair_transform.translation.x,
             crosshair_transform.translation.y,
         );
+
         let dir = (c_trans - p_trans).normalize();
 
         // TODO: Create a bullet pool
@@ -122,21 +132,17 @@ fn player_fire(
                 ..default()
             })
             .insert(Bullet)
-            .insert(Direction(dir));
-
-        player.last_shot = time_since_startup;
+            .insert(Direction(dir))
+            .insert(Velocity(256.));
     }
 }
 
-const BULLET_SPEED: f32 = 256.0;
-
-fn bullet_move(
-    mut bullet_query: Query<(&mut Transform, &Direction), With<Bullet>>,
+fn move_entities(
+    mut bullet_query: Query<(&mut Transform, &Direction, &Velocity)>,
     time: Res<Time>,
 ) {
-    for (mut transform, dir) in bullet_query.iter_mut() {
-        transform.translation.x += dir.0.x * time.delta_seconds() * BULLET_SPEED;
-        transform.translation.y += dir.0.y * time.delta_seconds() * BULLET_SPEED;
+    for (mut transform, dir, vel) in bullet_query.iter_mut() {
+        transform.translation += (dir.0 * vel.0 * time.delta_seconds()).extend(0.);
     }
 }
 
