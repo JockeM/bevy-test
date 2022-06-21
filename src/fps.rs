@@ -17,25 +17,29 @@ impl Plugin for FpsDisplayPlugin {
 struct FpsText;
 
 fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let font = asset_server.load("OpenSans-Bold.ttf");
+    commands.spawn_bundle(UiCameraBundle::default());
+
     commands
         .spawn_bundle(TextBundle {
-            transform: Transform::from_xyz(0.0, 0.0, 1.0),
+            style: Style {
+                align_self: AlignSelf::FlexEnd,
+                ..default()
+            },
             text: Text {
                 sections: vec![
                     TextSection {
                         value: "FPS: ".to_string(),
                         style: TextStyle {
-                            font: font.clone(),
-                            font_size: 48.,
+                            font: asset_server.load("OpenSans-Bold.ttf"),
+                            font_size: 24.,
                             color: Color::BLACK,
                         },
                     },
                     TextSection {
                         value: "".to_string(),
                         style: TextStyle {
-                            font: font.clone(),
-                            font_size: 48.,
+                            font: asset_server.load("OpenSans-Bold.ttf"),
+                            font_size: 24.,
                             color: Color::BLACK,
                         },
                     },
