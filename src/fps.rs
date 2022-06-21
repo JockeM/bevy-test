@@ -17,8 +17,6 @@ impl Plugin for FpsDisplayPlugin {
 struct FpsText;
 
 fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn_bundle(UiCameraBundle::default());
-
     commands
         .spawn_bundle(TextBundle {
             style: Style {
