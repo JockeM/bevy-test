@@ -25,6 +25,9 @@ struct Direction(Vec2);
 #[derive(Component)]
 struct Velocity(f32);
 
+#[derive(Component)]
+struct Lifetime(Timer);
+
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
@@ -35,7 +38,7 @@ impl Plugin for PlayerPlugin {
         app.add_system(crosshair_move);
         app.add_system(player_fire);
         app.add_system(move_entities);
-        app.add_system(despawn_bullet);
+        app.add_system(lifetime_despawn);
     }
 }
 
@@ -133,26 +136,28 @@ fn player_fire(
             })
             .insert(Bullet)
             .insert(Direction(dir))
-            .insert(Velocity(256.));
+            .insert(Velocity(256.))
+            .insert(Lifetime(Timer::new(Duration::from_millis(500), false)));
     }
 }
 
 fn move_entities(
-    mut bullet_query: Query<(&mut Transform, &Direction, &Velocity)>,
+    mut query: Query<(&mut Transform, &Direction, &Velocity)>,
     time: Res<Time>,
 ) {
-    for (mut transform, dir, vel) in bullet_query.iter_mut() {
+    for (mut transform, dir, vel) in query.iter_mut() {
         transform.translation += (dir.0 * vel.0 * time.delta_seconds()).extend(0.);
     }
 }
 
-fn despawn_bullet(mut commands: Commands, bullet_query: Query<(Entity, &Transform), With<Bullet>>) {
-    for (entity, transform) in bullet_query.iter() {
-        if transform.translation.x > WIDTH as f32
-            || transform.translation.x < -(WIDTH as f32)
-            || transform.translation.y > HEIGHT as f32
-            || transform.translation.y < -(HEIGHT as f32)
-        {
+fn lifetime_despawn(
+    mut commands: Commands,
+    mut lifetime_query: Query<(Entity, &mut Lifetime)>,
+    time: Res<Time>,
+) {
+    for (entity, mut lifetime) in lifetime_query.iter_mut() {
+        lifetime.0.tick(time.delta());
+        if lifetime.0.finished() {
             commands.entity(entity).despawn();
         }
     }
