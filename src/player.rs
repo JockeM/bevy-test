@@ -1,16 +1,23 @@
 use std::time::Duration;
 
 use crate::{HEIGHT, WIDTH};
-use bevy::{prelude::*, window::CursorMoved};
+use bevy::{prelude::*, window::CursorMoved, math::vec2};
 
 #[derive(Component)]
 pub struct Player {
     pub speed: f32,
 }
 
+#[derive(PartialEq, Eq)]
+enum FireType {
+    Normal,
+    Shotgun,
+}
+
 #[derive(Component)]
 struct Weapon {
     fire_timer: Timer,
+    fire_type: FireType,
 }
 
 #[derive(Component)]
@@ -52,6 +59,7 @@ fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
         .insert(Player { speed: 128.0 })
         .insert(Weapon {
             fire_timer: Timer::new(Duration::from_millis(100), true),
+            fire_type: FireType::Shotgun,
         });
 }
 
@@ -125,26 +133,46 @@ fn player_fire(
             crosshair_transform.translation.y,
         );
 
-        let dir = (c_trans - p_trans).normalize();
-
         // TODO: Create a bullet pool
-        commands
-            .spawn_bundle(SpriteBundle {
-                texture: asset_server.load("bullet.png"),
-                transform: player_transform.clone(),
-                ..default()
-            })
-            .insert(Bullet)
-            .insert(Direction(dir))
-            .insert(Velocity(256.))
-            .insert(Lifetime(Timer::new(Duration::from_millis(500), false)));
+        if weapon.fire_type == FireType::Normal {
+            let dir = (c_trans - p_trans).normalize();
+
+            commands
+                .spawn_bundle(SpriteBundle {
+                    texture: asset_server.load("bullet.png"),
+                    transform: player_transform.clone(),
+                    ..default()
+                })
+                .insert(Bullet)
+                .insert(Direction(dir))
+                .insert(Velocity(256.))
+                .insert(Lifetime(Timer::new(Duration::from_millis(3000), false)));
+        } else {
+            for _ in 0..5  {
+                // TODO: This needs to be better
+                let x = (rand::random::<f32>() - 0.5) as f32;
+                let y = (rand::random::<f32>() - 0.5) as f32;
+
+                let c = vec2(c_trans.x + x * 40., c_trans.y + y * 40.);
+
+                let dir = (c - p_trans).normalize();
+
+                commands
+                .spawn_bundle(SpriteBundle {
+                    texture: asset_server.load("bullet.png"),
+                    transform: player_transform.clone(),
+                    ..default()
+                })
+                .insert(Bullet)
+                .insert(Direction(dir))
+                .insert(Velocity(256.))
+                .insert(Lifetime(Timer::new(Duration::from_millis(3000), false)));
+            }
+        }
     }
 }
 
-fn move_entities(
-    mut query: Query<(&mut Transform, &Direction, &Velocity)>,
-    time: Res<Time>,
-) {
+fn move_entities(mut query: Query<(&mut Transform, &Direction, &Velocity)>, time: Res<Time>) {
     for (mut transform, dir, vel) in query.iter_mut() {
         transform.translation += (dir.0 * vel.0 * time.delta_seconds()).extend(0.);
     }

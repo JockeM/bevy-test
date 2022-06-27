@@ -49,7 +49,6 @@ fn despawn_enemy(
                 bullet.translation,
                 Vec2::new(2., 2.),
             ) {
-                println!("hit");
                 commands.entity(enemy.0).despawn();
             }
         }
